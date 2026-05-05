@@ -1,0 +1,6 @@
+{
+  "name": "Remix: AmarShop BD",
+  "description": "A modern, single-vendor e-commerce platform for Bangladesh with Firebase integration, featuring secure checkout with bKash/Nagad payment verification and regional delivery logic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

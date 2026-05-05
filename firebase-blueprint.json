@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access control information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "customer"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "fullName", "email", "role"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory product details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "imageUrls": { "type": "array" },
+        "stock": { "type": "number" },
+        "variants": { 
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "stock": { "type": "number" }
+            },
+            "required": ["id", "name", "price", "stock"]
+          }
+        },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category", "imageUrls"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product categories.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" }
+      },
+      "required": ["name", "slug"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer purchase order.",
+      "type": "object",
+      "properties": {
+        "customerUid": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "address": {
+          "type": "object",
+          "properties": {
+            "district": { "type": "string" },
+            "upazila": { "type": "string" },
+            "street": { "type": "string" }
+          }
+        },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryCharge": { "type": "number" },
+        "total": { "type": "number" },
+        "transactionId": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "orderStatus": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerUid", "items", "total", "transactionId", "address"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Customer review for a product.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "rating", "comment", "createdAt"]
+    },
+    "StoreSettings": {
+      "title": "StoreSettings",
+      "description": "General store configuration and contact details.",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "deliveryChargeInsideDhaka": { "type": "number" },
+        "deliveryChargeOutsideDhaka": { "type": "number" },
+        "bkashNumber": { "type": "string" },
+        "nagadNumber": { "type": "string" },
+        "facebookUrl": { "type": "string" },
+        "instagramUrl": { "type": "string" },
+        "heroBannerTitle": { "type": "string" },
+        "heroBannerSubtitle": { "type": "string" },
+        "heroBannerUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["storeName", "email", "phone"]
+    },
+    "VerifiedTransaction": {
+      "title": "VerifiedTransaction",
+      "description": "Legitimate transaction IDs provided by payment gateways.",
+      "type": "object",
+      "properties": {
+        "transactionId": { "type": "string" },
+        "amount": { "type": "number" },
+        "method": { "type": "string", "enum": ["bkash", "nagad"] },
+        "isUsed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["transactionId", "amount", "method"]
+    }
+  },
+  "firestore": {
+    "verified_transactions": {
+      "schema": "VerifiedTransaction",
+      "description": "Master list of valid payment transactions"
+    },
+    "settings/config": {
+      "schema": "StoreSettings",
+      "description": "Global store settings"
+    },
+    "users": {
+      "schema": "User",
+      "description": "User records"
+    },
+    "products": {
+      "schema": "Product",
+      "description": "Store products"
+    },
+    "products/{productId}/reviews": {
+      "schema": "Review",
+      "description": "Product reviews"
+    },
+    "wishlists/{userId}": {
+      "schema": "object",
+      "description": "User wishlist storage"
+    },
+    "categories": {
+      "schema": "Category",
+      "description": "Product categories"
+    },
+    "orders": {
+      "schema": "Order",
+      "description": "Customer orders"
+    }
+  }
+}
