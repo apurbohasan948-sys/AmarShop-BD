@@ -16,7 +16,7 @@ If you are deploying to GitHub Pages, you must update the `base` path in `vite.c
 2. Update the `base` property (if deploying to a sub-path):
    ```typescript
    export default defineConfig({
-     base: '/your-repo-name/',
+     base: '/AmarShop-BD/',
      // ...
    });
    ```
