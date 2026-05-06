@@ -16,12 +16,23 @@ If you are deploying to GitHub Pages, you must update the `base` path in `vite.c
 2. Update the `base` property (if deploying to a sub-path):
    ```typescript
    export default defineConfig({
-     base: '/AmarShop-BD/',
+     base: '/your-repo-name/',
      // ...
    });
    ```
 3. Run `npm run build`.
 4. Push the `dist` folder to your `gh-pages` branch.
+
+## Deployment to Netlify
+This project is pre-configured for Netlify with a `netlify.toml` file.
+
+1. Connect your GitHub repository to Netlify.
+2. Netlify will automatically detect the settings:
+   - **Build Command**: `npm run build`
+   - **Publish Directory**: `dist`
+3. Environment Variables:
+   - Make sure to add `GEMINI_API_KEY` in the Netlify UI (Site settings > Environment variables) if your app uses AI features.
+4. The included `redirects` rule ensures that React Router works perfectly when users refresh the page.
 
 ## Troubleshooting Build Errors
 - **TypeScript Errors**: Run `npm run lint` to check for any static type issues.
