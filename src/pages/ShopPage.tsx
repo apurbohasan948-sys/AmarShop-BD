@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Product, Category } from '../types';
 import ProductCard from '../components/ProductCard';
-import { SlidersHorizontal, ShoppingBag, Search, X } from 'lucide-react';
+import { SlidersHorizontal, ShoppingBag, Search, X, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useStore } from '../contexts/StoreContext';
 
 const ShopPage = () => {
-  const { settings } = useStore();
+  const navigate = useNavigate();
+  const { settings, loading: storeLoading } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(['All']);
@@ -18,19 +19,25 @@ const ShopPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>(searchParams.get('category') || 'All');
   const [sortBy, setSortBy] = useState<string>('newest');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [inStockOnly, setInStockOnly] = useState<boolean>(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const searchTerm = searchParams.get('q') || '';
 
   useEffect(() => {
+    if (storeLoading) return;
     const fetchMeta = async () => {
       const catSnap = await getDocs(collection(db, 'categories'));
       const catList = catSnap.docs.map(doc => (doc.data() as Category).name);
       setCategories(['All', ...catList]);
     };
     fetchMeta();
-  }, []);
+  }, [storeLoading]);
 
   useEffect(() => {
+    if (storeLoading) return;
     const fetchProducts = async () => {
       setLoading(true);
       try {
@@ -45,9 +52,10 @@ const ShopPage = () => {
       }
     };
     fetchProducts();
-  }, []);
+  }, [storeLoading]);
 
   useEffect(() => {
+    if (storeLoading) return;
     let result = [...products];
 
     // Filter
@@ -56,6 +64,15 @@ const ShopPage = () => {
     }
     if (activeCategory !== 'All') {
       result = result.filter(p => p.category === activeCategory);
+    }
+    if (minPrice !== '') {
+      result = result.filter(p => p.price >= parseFloat(minPrice));
+    }
+    if (maxPrice !== '') {
+      result = result.filter(p => p.price <= parseFloat(maxPrice));
+    }
+    if (inStockOnly) {
+      result = result.filter(p => (p.stock || 0) > 0);
     }
 
     // Sort
@@ -80,7 +97,15 @@ const ShopPage = () => {
     }
 
     setFilteredProducts(result);
-  }, [searchTerm, activeCategory, sortBy, products]);
+  }, [searchTerm, activeCategory, sortBy, products, storeLoading, minPrice, maxPrice, inStockOnly]);
+
+  if (storeLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white min-h-screen">
@@ -154,6 +179,18 @@ const ShopPage = () => {
               )}
             </div>
             
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center space-x-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border ${
+                showFilters 
+                  ? 'bg-gray-900 text-white border-gray-900 shadow-xl shadow-gray-900/20' 
+                  : 'bg-white text-gray-600 border-gray-100 hover:bg-gray-50'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Filters</span>
+            </button>
+
             <div className="flex items-center space-x-2 bg-gray-50 p-1 rounded-2xl border border-gray-100">
               <select 
                 value={sortBy}
@@ -169,22 +206,87 @@ const ShopPage = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex overflow-x-auto pb-8 space-x-3 no-scrollbar scroll-smooth -mx-4 px-4 md:mx-0 md:px-0">
+        {/* Category Filters */}
+        <div className="flex overflow-x-auto pb-4 space-x-3 no-scrollbar scroll-smooth -mx-4 px-4 md:mx-0 md:px-0 mb-4 border-b border-gray-50">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap active:scale-95 min-w-[120px] md:min-w-0 ${
+              className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap active:scale-95 min-w-[100px] md:min-w-0 ${
                 activeCategory === cat 
-                  ? 'bg-gray-900 text-white shadow-xl shadow-gray-900/20' 
-                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100 border border-gray-100/50'
+                  ? 'bg-gray-900 text-white shadow-lg shadow-gray-900/20' 
+                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
               }`}
             >
               {cat}
             </button>
           ))}
         </div>
+
+        {/* Expandable Advanced Filters */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-12 border-b border-gray-50 bg-gray-50/50 rounded-3xl"
+            >
+              <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Price Range */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-gray-900 italic">Price Range</h4>
+                  <div className="flex items-center space-x-3">
+                    <input 
+                      type="number" 
+                      placeholder="Min"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value)}
+                      className="w-full bg-white border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-600/20"
+                    />
+                    <span className="text-gray-300">/</span>
+                    <input 
+                      type="number" 
+                      placeholder="Max"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                      className="w-full bg-white border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-600/20"
+                    />
+                  </div>
+                </div>
+
+                {/* Availability */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-gray-900 italic">Availability</h4>
+                  <label className="flex items-center space-x-3 cursor-pointer group">
+                    <div 
+                      onClick={() => setInStockOnly(!inStockOnly)}
+                      className={`w-12 h-6 rounded-full relative transition-colors ${inStockOnly ? 'bg-orange-600' : 'bg-gray-200'}`}
+                    >
+                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${inStockOnly ? 'translate-x-6' : ''}`} />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest text-gray-600">In Stock Only</span>
+                  </label>
+                </div>
+
+                {/* Reset */}
+                <div className="flex items-end justify-end">
+                  <button 
+                    onClick={() => {
+                      setMinPrice('');
+                      setMaxPrice('');
+                      setInStockOnly(false);
+                      setActiveCategory('All');
+                    }}
+                    className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-orange-600 transition-colors"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Product Grid */}
         {loading ? (

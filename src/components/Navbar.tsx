@@ -88,12 +88,6 @@ const Navbar = () => {
                     )}
                   </div>
                 </Link>
-
-                {isAdmin && (
-                  <Link to="/admin" title="Admin Panel" className="p-2 text-gray-400 hover:text-orange-600 transition-colors">
-                    <LayoutDashboard className="w-5 h-5" />
-                  </Link>
-                )}
               </div>
             ) : (
               <Link
@@ -105,8 +99,26 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Mobile Profile Action (Simplified) */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile Actions */}
+          <div className="md:hidden flex items-center space-x-3">
+            <Link to="/wishlist" className="relative p-2 text-gray-700 active:text-orange-600 transition-colors">
+              <Heart className="w-6 h-6" />
+              {wishlistItems.length > 0 && (
+                <span className="absolute top-1 right-1 bg-gray-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ring-2 ring-white">
+                  {wishlistItems.length}
+                </span>
+              )}
+            </Link>
+
+            <Link to="/cart" className="relative p-2 text-gray-700 active:text-orange-600 transition-colors">
+              <ShoppingCart className="w-6 h-6" />
+              {cartCount > 0 && (
+                <span className="absolute top-1 right-1 bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ring-2 ring-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
             {user ? (
               <Link 
                 to="/profile"

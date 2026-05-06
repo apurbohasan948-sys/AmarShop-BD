@@ -14,9 +14,10 @@ import ProductDetails from './pages/ProductDetails';
 import CartPage from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
 import OrdersPage from './pages/OrdersPage';
-import AdminPanel from './pages/AdminPanel';
 import ProfilePage from './pages/ProfilePage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
+import OrderDetails from './pages/OrderDetails';
+import ChatWidget from './components/ChatWidget';
 import { MessageCircle } from 'lucide-react';
 
 import { StoreSettings } from './types';
@@ -85,18 +86,22 @@ const Layout = ({ children, settings }: { children: React.ReactNode, settings: S
         </div>
       </div>
     </footer>
-    {settings.whatsappNumber && (
-      <a 
-        href={`https://wa.me/${settings.whatsappNumber.replace(/\D/g, '')}`}
-        target="_blank"
-        rel="noreferrer"
-        className="fixed bottom-28 md:bottom-10 right-6 z-40 bg-green-500 text-white p-4 rounded-full shadow-2xl shadow-green-500/20 hover:bg-green-600 transition-all hover:scale-110 active:scale-95 group"
-      >
-        <MessageCircle className="w-6 h-6" />
-        <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-white/10">
-          Chat Support
-        </span>
-      </a>
+    {settings.liveChatType === 'built-in' ? (
+      <ChatWidget />
+    ) : (
+      settings.whatsappNumber && (
+        <a 
+          href={`https://wa.me/${settings.whatsappNumber.replace(/\D/g, '').startsWith('88') ? '' : '88'}${settings.whatsappNumber.replace(/\D/g, '')}`}
+          target="_blank"
+          rel="noreferrer"
+          className="fixed bottom-28 md:bottom-10 right-6 z-40 bg-green-500 text-white p-4 rounded-full shadow-2xl shadow-green-500/20 hover:bg-green-600 transition-all hover:scale-110 active:scale-95 group"
+        >
+          <MessageCircle className="w-6 h-6" />
+          <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-white/10">
+            Chat Support
+          </span>
+        </a>
+      )
     )}
   </div>
 );
@@ -118,8 +123,16 @@ export default function App() {
 }
 
 const AppContent = () => {
-  const { settings } = useStore();
+  const { settings, loading } = useStore();
   
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <Layout settings={settings}>
       <Routes>
@@ -145,6 +158,12 @@ const AppContent = () => {
             <OrdersPage />
           </ProtectedRoute>
         } />
+        
+        <Route path="/order/:id" element={
+          <ProtectedRoute>
+            <OrderDetails />
+          </ProtectedRoute>
+        } />
 
         <Route path="/profile" element={
           <ProtectedRoute>
@@ -153,12 +172,6 @@ const AppContent = () => {
         } />
 
         <Route path="/track" element={<OrderTrackingPage />} />
-
-        <Route path="/admin/*" element={
-          <ProtectedRoute adminOnly>
-            <AdminPanel />
-          </ProtectedRoute>
-        } />
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

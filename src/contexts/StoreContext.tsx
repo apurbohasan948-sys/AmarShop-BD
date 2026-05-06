@@ -22,6 +22,7 @@ const defaultSettings: StoreSettings = {
   heroBannerSubtitle: 'Crafted with precision for the modern lifestyle',
   heroBannerUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1600',
   whatsappNumber: '01XXXXXXXXX',
+  liveChatType: 'built-in',
   coupons: [
     { code: 'WELCOME10', discountType: 'percentage', value: 10, isActive: true },
     { code: 'SAVEDK100', discountType: 'fixed', value: 100, minSpend: 1000, isActive: true }
@@ -43,7 +44,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const settingsRef = doc(db, 'settings', 'config');
     const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
       if (docSnap.exists()) {
-        setSettings(docSnap.data() as StoreSettings);
+        const data = docSnap.data() as StoreSettings;
+        setSettings({ ...defaultSettings, ...data });
       } else {
         // Initialize with default settings if not exists
         setDoc(settingsRef, defaultSettings).catch(console.error);

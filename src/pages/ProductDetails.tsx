@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, where, limit } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, where, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Product, Review, ProductVariant } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { ShoppingCart, Star, ShieldCheck, Truck, RotateCcw, ChevronLeft, ChevronRight, Plus, Minus, MessageSquare, Send, Heart, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { ShoppingCart, Star, ShieldCheck, Truck, RotateCcw, ChevronLeft, ChevronRight, Plus, Minus, MessageSquare, Send, Heart, CheckCircle2, ShoppingBag, Facebook, Twitter, MessageCircle, Link, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useWishlist } from '../contexts/WishlistContext';
 import ProductCard from '../components/ProductCard';
@@ -22,8 +22,53 @@ const ProductDetails = () => {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
   const [added, setAdded] = useState(false);
+  const [mainImageIndex, setMainImageIndex] = useState(0);
+  const [zoomStyle, setZoomStyle] = useState({ display: 'none', backgroundPosition: '0% 0%' });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.pageX - left) / width) * 100;
+    const y = ((e.pageY - top) / height) * 100;
+    setZoomStyle({
+      display: 'block',
+      backgroundPosition: `${x}% ${y}%`,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setZoomStyle({ display: 'none', backgroundPosition: '0% 0%' });
+  };
   
+  const [copied, setCopied] = useState(false);
+  
+  const shareOnFacebook = () => {
+    if (!product) return;
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+  };
+
+  const shareOnTwitter = () => {
+    if (!product) return;
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out this ${product.name} at Aether!`);
+    window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
+  };
+
+  const shareOnWhatsApp = () => {
+    if (!product) return;
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out this ${product.name} at Aether! `);
+    window.open(`https://wa.me/?text=${text}${url}`, '_blank');
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const { addToCart } = useCart();
   const { user, profile } = useAuth();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -49,6 +94,12 @@ const ProductDetails = () => {
     addToCart(product, quantity, selectedVariant || undefined);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleBuyNow = () => {
+    if (!product) return;
+    addToCart(product, quantity, selectedVariant || undefined);
+    navigate('/checkout');
   };
 
   const fetchReviews = async () => {
@@ -115,6 +166,7 @@ const ProductDetails = () => {
 
     setSubmittingReview(true);
     try {
+      // 1. Add Review
       await addDoc(collection(db, 'products', id, 'reviews'), {
         userId: user.uid,
         userName: profile?.fullName || user.displayName || 'Anonymous User',
@@ -122,8 +174,28 @@ const ProductDetails = () => {
         comment: newReview.comment,
         createdAt: serverTimestamp(),
       });
+
+      // 2. Refresh reviews list locally first to get accurate count/avg
+      const reviewsQuery = query(
+        collection(db, 'products', id, 'reviews'),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(reviewsQuery);
+      const allReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
+      setReviews(allReviews);
+
+      // 3. Update Product Metadata (Aggregate)
+      const totalRating = allReviews.reduce((acc, r) => acc + r.rating, 0);
+      const avg = totalRating / allReviews.length;
+
+      await updateDoc(doc(db, 'products', id), {
+        averageRating: parseFloat(avg.toFixed(1)),
+        reviewCount: allReviews.length
+      });
+
+      setReviewSuccess(true);
       setNewReview({ rating: 5, comment: '' });
-      fetchReviews();
+      setTimeout(() => setReviewSuccess(false), 3000);
     } catch (err) {
       console.error("Error submitting review:", err);
     } finally {
@@ -151,17 +223,51 @@ const ProductDetails = () => {
           <motion.div 
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
+            className="space-y-6 lg:sticky lg:top-32"
           >
-            <div className="aspect-[4/5] bg-gray-50 rounded-[3rem] overflow-hidden shadow-2xl shadow-gray-200/50 border border-gray-100">
-              <img src={product.imageUrls[0]} alt={product.name} className="w-full h-full object-cover" />
+            <div 
+              className="relative aspect-[4/5] bg-gray-50 rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl shadow-gray-200/50 border border-gray-100 cursor-zoom-in group"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+            >
+              <AnimatePresence mode="wait">
+                <motion.img 
+                  key={mainImageIndex}
+                  src={product.imageUrls[mainImageIndex]} 
+                  alt={product.name} 
+                  initial={{ opacity: 0, scale: 1.1 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full h-full object-cover" 
+                />
+              </AnimatePresence>
+              
+              {/* Zoom Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none hidden md:block opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{
+                  backgroundImage: `url(${product.imageUrls[mainImageIndex]})`,
+                  backgroundSize: '200%',
+                  ...zoomStyle
+                }}
+              />
             </div>
+
             {product.imageUrls.length > 1 && (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide px-2">
                 {product.imageUrls.map((url, i) => (
-                  <div key={i} className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 cursor-pointer hover:border-orange-600 transition-all opacity-60 hover:opacity-100">
-                    <img src={url} alt={`${product.name} ${i}`} className="w-full h-full object-cover" />
-                  </div>
+                  <button
+                    key={i}
+                    onClick={() => setMainImageIndex(i)}
+                    className={`relative flex-shrink-0 w-20 h-24 md:w-24 md:h-32 bg-gray-50 rounded-2xl overflow-hidden border-2 transition-all p-1 ${
+                      mainImageIndex === i 
+                        ? 'border-orange-600 shadow-lg shadow-orange-600/10' 
+                        : 'border-transparent opacity-60 hover:opacity-100 hover:border-gray-200'
+                    }`}
+                  >
+                    <img src={url} alt={`${product.name} thumbnail ${i}`} className="w-full h-full object-cover rounded-xl" />
+                  </button>
                 ))}
               </div>
             )}
@@ -229,6 +335,46 @@ const ProductDetails = () => {
               {product.description}
             </p>
 
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center space-x-2">
+                <span>Share this piece</span>
+                <span className="w-8 h-px bg-gray-100" />
+              </p>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={shareOnFacebook}
+                  className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-[#1877F2] hover:text-white transition-all active:scale-90 border border-gray-100"
+                  title="Share on Facebook"
+                >
+                  <Facebook className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={shareOnTwitter}
+                  className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all active:scale-90 border border-gray-100"
+                  title="Share on Twitter"
+                >
+                  <Twitter className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={shareOnWhatsApp}
+                  className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-[#25D366] hover:text-white transition-all active:scale-90 border border-gray-100"
+                  title="Share on WhatsApp"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={copyToClipboard}
+                  className={`px-4 h-10 rounded-xl flex items-center space-x-2 transition-all active:scale-90 border ${
+                    copied ? 'bg-green-600 text-white border-green-600' : 'bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-200'
+                  }`}
+                  title="Copy Link"
+                >
+                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Link className="w-4 h-4" />}
+                  <span className="text-[10px] font-black uppercase tracking-widest">{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-4 md:space-y-6 pt-2 md:pt-6 mb-6 md:mb-10">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 md:space-x-6">
                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded-2xl border border-gray-100 w-full sm:w-auto">
@@ -260,14 +406,22 @@ const ProductDetails = () => {
                   {added ? (
                     <>
                       <CheckCircle2 className="w-5 h-5 md:w-6 h-6" />
-                      <span>Added to Bag</span>
+                      <span>Added</span>
                     </>
                   ) : (
                     <>
                       <ShoppingCart className="w-5 h-5 md:w-6 h-6" />
-                      <span>{(selectedVariant ? selectedVariant.stock : product.stock) > 0 ? "Add to Bag" : "Sold Out"}</span>
+                      <span>Bag</span>
                     </>
                   )}
+                </button>
+                <button 
+                  onClick={handleBuyNow}
+                  disabled={(selectedVariant ? selectedVariant.stock : product.stock) <= 0}
+                  className="flex-1 py-4 md:py-5 rounded-[2rem] bg-orange-600 text-white font-black text-base md:text-lg transition-all shadow-2xl shadow-orange-600/30 hover:bg-orange-700 flex items-center justify-center space-x-3 active:scale-95 disabled:bg-gray-200 disabled:shadow-none disabled:cursor-not-allowed"
+                >
+                  <ShoppingBag className="w-5 h-5 md:w-6 h-6" />
+                  <span>Buy Now</span>
                 </button>
                 <button 
                   onClick={() => toggleWishlist(product)}
@@ -354,10 +508,21 @@ const ProductDetails = () => {
               <button
                 type="submit"
                 disabled={submittingReview || !newReview.comment.trim()}
-                className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-gray-900/10 flex items-center space-x-2 hover:bg-orange-600 transition-all disabled:opacity-50 active:scale-95"
+                className={`px-8 py-4 rounded-2xl font-black text-sm shadow-xl flex items-center space-x-2 transition-all disabled:opacity-50 active:scale-95 ${
+                  reviewSuccess ? 'bg-green-600 text-white shadow-green-500/20' : 'bg-gray-900 text-white shadow-gray-900/10 hover:bg-orange-600'
+                }`}
               >
-                <span>{submittingReview ? 'Posting...' : 'Post Review'}</span>
-                <Send className="w-4 h-4" />
+                {reviewSuccess ? (
+                  <>
+                    <span>Review Posted!</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </>
+                ) : (
+                  <>
+                    <span>{submittingReview ? 'Posting...' : 'Post Review'}</span>
+                    <Send className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </motion.form>
           ) : (

@@ -127,9 +127,56 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["transactionId", "amount", "method"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupons for users.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "discountType": { "type": "string", "enum": ["percentage", "fixed"] },
+        "value": { "type": "number" },
+        "minSpend": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "discountType", "value", "isActive"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Customer support chat session.",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "unreadCount": { "type": "number" }
+      },
+      "required": ["customerId", "lastMessageAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Message in a support chat.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderRole": { "type": "string", "enum": ["admin", "customer"] },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderRole", "text", "createdAt"]
     }
   },
   "firestore": {
+    "chats": {
+      "schema": "Chat",
+      "description": "Active support chat sessions"
+    },
+    "chats/{chatId}/messages": {
+      "schema": "Message",
+      "description": "Messages within a chat session"
+    },
     "verified_transactions": {
       "schema": "VerifiedTransaction",
       "description": "Master list of valid payment transactions"
@@ -161,6 +208,10 @@
     "orders": {
       "schema": "Order",
       "description": "Customer orders"
+    },
+    "coupons": {
+      "schema": "Coupon",
+      "description": "Store discount coupons"
     }
   }
 }

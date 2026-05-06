@@ -38,6 +38,13 @@ const OrderTrackingPage = () => {
     return steps.indexOf(status);
   };
 
+  const steps = [
+    { id: 'pending', label: 'Placed', icon: Clock },
+    { id: 'processing', label: 'Processing', icon: Package },
+    { id: 'shipped', label: 'Shipped', icon: Truck },
+    { id: 'delivered', label: 'Delivered', icon: CheckCircle2 },
+  ];
+
   const statusIcons = {
     pending: <Clock className="w-6 h-6" />,
     processing: <Package className="w-6 h-6" />,
@@ -95,34 +102,71 @@ const OrderTrackingPage = () => {
               className="space-y-8"
             >
               {/* Status Visualizer */}
-              <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100">
-                <div className="flex justify-between items-center mb-10 overflow-x-auto pb-4 gap-4">
-                  {['pending', 'processing', 'shipped', 'delivered'].map((step, idx) => {
-                    const currentStep = getStatusStep(order.orderStatus);
-                    const isActive = idx <= currentStep;
-                    const isCompleted = idx < currentStep;
+              <div className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-gray-100">
+                <div className="relative mb-16 mt-8">
+                  {/* Progress Line Background */}
+                  <div className="absolute top-8 left-0 w-full h-1.5 bg-gray-100 rounded-full" />
+                  
+                  {/* Active Progress Line */}
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(getStatusStep(order.orderStatus) / (steps.length - 1)) * 100}%` }}
+                    className="absolute top-8 left-0 h-1.5 bg-orange-600 rounded-full shadow-[0_0_15px_rgba(234,88,12,0.4)] transition-all duration-1000 ease-out z-0"
+                  />
 
-                    return (
-                      <div key={step} className="flex-1 min-w-[80px] flex flex-col items-center group relative">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-lg ${
-                          isActive ? 'bg-orange-600 text-white scale-110 shadow-orange-500/20' : 'bg-gray-50 text-gray-300'
-                        }`}>
-                          {statusIcons[step as keyof typeof statusIcons]}
-                          {isCompleted && (
-                            <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1 border-2 border-white">
-                              <CheckCircle2 className="w-3 h-3 text-white" />
-                            </div>
-                          )}
+                  <div className="relative flex justify-between items-center z-10 px-2">
+                    {steps.map((step, idx) => {
+                      const currentStepIndex = getStatusStep(order.orderStatus);
+                      const isCompleted = idx <= currentStepIndex;
+                      const isActive = idx === currentStepIndex;
+                      const Icon = step.icon;
+
+                      return (
+                        <div key={step.id} className="flex flex-col items-center">
+                          <div className="relative group">
+                            <motion.div 
+                              initial={false}
+                              animate={{ 
+                                scale: isActive ? 1.25 : 1,
+                                backgroundColor: isCompleted ? '#ea580c' : '#ffffff',
+                                borderColor: isCompleted ? '#ea580c' : '#f3f4f6'
+                              }}
+                              className={`w-16 h-16 rounded-[1.5rem] border-4 flex items-center justify-center transition-all duration-500 shadow-xl ${
+                                isCompleted ? 'shadow-orange-500/20' : 'shadow-gray-200/5'
+                              }`}
+                            >
+                              <Icon className={`w-7 h-7 ${isCompleted ? 'text-white' : 'text-gray-300'} ${isActive ? 'animate-pulse' : ''}`} />
+                            </motion.div>
+                            
+                            {isActive && (
+                              <div className="absolute -inset-2 bg-orange-600/10 rounded-[2rem] animate-ping -z-10" />
+                            )}
+                            
+                            {isCompleted && !isActive && (
+                              <div className="absolute -top-2 -right-2 bg-green-500 rounded-xl p-1.5 border-4 border-white shadow-lg">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="mt-8 text-center">
+                            <h4 className={`text-xs font-black uppercase tracking-widest mb-1 transition-colors duration-500 ${isCompleted ? 'text-gray-900' : 'text-gray-300'}`}>
+                              {step.label}
+                            </h4>
+                            {isActive && (
+                              <motion.p 
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-[9px] font-black text-orange-600 uppercase tracking-widest italic"
+                              >
+                                Current Phase
+                              </motion.p>
+                            )}
+                          </div>
                         </div>
-                        <p className={`mt-4 text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-gray-900' : 'text-gray-300'}`}>
-                          {step}
-                        </p>
-                        {idx < 3 && (
-                          <div className={`hidden md:block absolute top-7 -right-1/2 w-full h-[2px] -z-10 ${idx < currentStep ? 'bg-orange-600' : 'bg-gray-100'}`} />
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="pt-8 border-t border-gray-50 flex flex-col md:flex-row justify-between gap-6">

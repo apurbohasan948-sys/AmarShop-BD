@@ -94,7 +94,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <div>
           <div className="hidden md:flex items-center space-x-1 mb-1">
             {[1, 2, 3, 4, 5].map((i) => (
-              <Star key={i} className="w-3 h-3 fill-orange-400 text-orange-400" />
+              <Star 
+                key={i} 
+                className={`w-3 h-3 ${
+                  i <= Math.round(product.averageRating || 0) 
+                    ? 'fill-orange-400 text-orange-400' 
+                    : 'text-gray-200'
+                }`} 
+              />
             ))}
             <span className="text-[10px] font-bold text-gray-400 pl-1">({product.reviewCount || 0})</span>
           </div>

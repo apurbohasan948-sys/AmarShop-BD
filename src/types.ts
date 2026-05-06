@@ -79,6 +79,22 @@ export interface Review {
   createdAt: any; // Firestore Timestamp
 }
 
+export interface ChatMessage {
+  id?: string;
+  senderId: string;
+  senderRole: 'admin' | 'customer';
+  text: string;
+  createdAt: any;
+}
+
+export interface ChatSession {
+  id: string; // userId
+  customerName: string;
+  lastMessage: string;
+  lastMessageAt: any;
+  unreadCount: number;
+}
+
 export interface StoreSettings {
   storeName: string;
   email: string;
@@ -95,5 +111,6 @@ export interface StoreSettings {
   heroBannerSubtitle?: string;
   heroBannerUrl?: string;
   whatsappNumber?: string;
+  liveChatType?: 'whatsapp' | 'built-in';
   coupons?: Coupon[];
 }

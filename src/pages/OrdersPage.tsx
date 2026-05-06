@@ -3,8 +3,9 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Order } from '../types';
-import { Package, Clock, CheckCircle2, Truck, XCircle, Search } from 'lucide-react';
+import { Package, Clock, CheckCircle2, Truck, XCircle, Search, ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 
 const OrdersPage = () => {
   const { user } = useAuth();
@@ -59,18 +60,18 @@ const OrdersPage = () => {
     const steps = [
       { id: 'pending', label: 'Placed', icon: Clock },
       { id: 'processing', label: 'Processing', icon: Package },
-      { id: 'shipped', label: 'On Way', icon: Truck },
+      { id: 'shipped', label: 'Shipped', icon: Truck },
       { id: 'delivered', label: 'Delivered', icon: CheckCircle2 },
     ];
 
     if (status === 'cancelled') {
       return (
-        <div className="mb-12 bg-red-50 p-6 rounded-3xl border border-red-100 flex items-center space-x-4">
-          <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center">
-            <XCircle className="w-6 h-6 text-red-600" />
+        <div className="mb-12 bg-red-50 p-8 rounded-[2.5rem] border border-red-100 flex items-center space-x-6">
+          <div className="w-16 h-16 bg-red-100 rounded-3xl flex items-center justify-center shadow-lg shadow-red-500/10">
+            <XCircle className="w-8 h-8 text-red-600" />
           </div>
           <div>
-            <p className="text-sm font-black text-red-600 uppercase tracking-widest">Order Cancelled</p>
+            <h4 className="text-sm font-black text-red-600 uppercase tracking-widest mb-1">Termination Sequence Active</h4>
             <p className="text-xs text-red-400 font-medium italic">This order has been cancelled and will not be processed further.</p>
           </div>
         </div>
@@ -80,14 +81,16 @@ const OrdersPage = () => {
     const currentStepIndex = steps.findIndex(s => s.id === status);
     
     return (
-      <div className="mb-12">
-        <div className="relative">
-          {/* Connecting Line */}
-          <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2" />
+      <div className="mb-16 mt-8">
+        <div className="relative px-4">
+          {/* Progress Connector Background */}
+          <div className="absolute top-7 left-0 w-full h-1.5 bg-gray-100 rounded-full" />
+          
+          {/* Glowing Active Connector */}
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-            className="absolute top-1/2 left-0 h-0.5 bg-orange-600 -translate-y-1/2 transition-all duration-1000"
+            className="absolute top-7 left-0 h-1.5 bg-orange-600 rounded-full shadow-[0_0_15px_rgba(234,88,12,0.4)] transition-all duration-1000 ease-out"
           />
 
           {/* Steps */}
@@ -99,20 +102,40 @@ const OrdersPage = () => {
 
               return (
                 <div key={step.id} className="flex flex-col items-center">
-                  <motion.div 
-                    initial={false}
-                    animate={{ 
-                      scale: isActive ? 1.1 : 1,
-                      backgroundColor: isCompleted ? '#ea580c' : '#f9fafb',
-                      borderColor: isCompleted ? '#ea580c' : '#f3f4f6'
-                    }}
-                    className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center transition-colors z-10`}
-                  >
-                    <Icon className={`w-5 h-5 ${isCompleted ? 'text-white' : 'text-gray-300'}`} />
-                  </motion.div>
-                  <p className={`mt-3 text-[10px] font-black uppercase tracking-widest ${isCompleted ? 'text-gray-900' : 'text-gray-300'}`}>
-                    {step.label}
-                  </p>
+                  <div className="relative group">
+                    <motion.div 
+                      initial={false}
+                      animate={{ 
+                        scale: isActive ? 1.25 : 1,
+                        backgroundColor: isCompleted ? '#ea580c' : '#ffffff',
+                        borderColor: isCompleted ? '#ea580c' : '#f3f4f6'
+                      }}
+                      className={`w-14 h-14 rounded-2xl border-4 flex items-center justify-center transition-all duration-500 z-10 shadow-xl ${
+                        isCompleted ? 'shadow-orange-500/20' : 'shadow-gray-200/5'
+                      }`}
+                    >
+                      <Icon className={`w-6 h-6 ${isCompleted ? 'text-white' : 'text-gray-300'} ${isActive ? 'animate-pulse' : ''}`} />
+                    </motion.div>
+                    
+                    {isActive && (
+                      <div className="absolute -inset-2 bg-orange-600/10 rounded-3xl animate-ping -z-10" />
+                    )}
+                  </div>
+                  
+                  <div className="mt-6 text-center">
+                    <p className={`text-[11px] font-black uppercase tracking-widest mb-1 transition-colors duration-500 ${isCompleted ? 'text-gray-900' : 'text-gray-300'}`}>
+                      {step.label}
+                    </p>
+                    {isActive && (
+                      <motion.span 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-[8px] font-black text-orange-600 uppercase tracking-widest italic"
+                      >
+                        In Progress
+                      </motion.span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -183,6 +206,19 @@ const OrdersPage = () => {
                     className="overflow-hidden"
                   >
                     <div className="p-8 bg-gray-50/50 border-t border-gray-50">
+                      <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] flex items-center">
+                          <div className="w-2 h-2 rounded-full bg-orange-600 mr-2 animate-pulse" />
+                          Visual Progress
+                        </h3>
+                        <Link 
+                          to={`/order/${order.id}`}
+                          className="flex items-center space-x-2 text-[10px] font-black text-orange-600 uppercase tracking-widest hover:underline group"
+                        >
+                          <span>See Full Tracker</span>
+                          <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </Link>
+                      </div>
                       <OrderStatusTracker status={order.orderStatus} />
                       
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

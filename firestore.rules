@@ -85,6 +85,12 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
     }
 
+    // Coupons Collection
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Orders Collection
     match /orders/{orderId} {
       allow read: if isSignedIn() && (isOwner(existing().customerUid) || isAdmin());
@@ -98,6 +104,17 @@ service cloud.firestore {
         incoming().paymentStatus == 'verified'
       );
       allow delete: if false;
+    }
+
+    // Chats Collection
+    match /chats/{chatId} {
+      allow read: if isOwner(chatId) || isAdmin();
+      allow create, update: if isOwner(chatId) || isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isOwner(chatId) || isAdmin();
+        allow create: if isOwner(chatId) || isAdmin();
+      }
     }
   }
 }

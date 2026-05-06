@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
 import { db, auth } from '../services/firebase';
 import { districts, bdLocationData } from '../utils/locationData';
-import { ShoppingBag, ChevronRight, CheckCircle2, ShieldCheck, Search, Loader2 } from 'lucide-react';
+import { ShoppingBag, ChevronRight, CheckCircle2, ShieldCheck, Search, Loader2, MapPin } from 'lucide-react';
 
 enum OperationType {
   CREATE = 'create',
@@ -33,7 +33,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 const CheckoutPage = () => {
-  const { cart, cartTotal, clearCart } = useCart();
+  const { cart, cartTotal, clearCart, appliedCoupon, setAppliedCoupon } = useCart();
   const { user, profile } = useAuth();
   const { settings } = useStore();
   const navigate = useNavigate();
@@ -55,7 +55,6 @@ const CheckoutPage = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [verificationError, setVerificationError] = useState('');
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponError, setCouponError] = useState('');
 
   useEffect(() => {
@@ -67,13 +66,16 @@ const CheckoutPage = () => {
   useEffect(() => {
     if (formData.district) {
       setUpazilaList(bdLocationData[formData.district] || []);
-      setDeliveryCharge(formData.district === 'Dhaka' ? 150 : 100);
+      const charge = formData.district === 'Dhaka' 
+        ? (settings.deliveryChargeInsideDhaka || 150) 
+        : (settings.deliveryChargeOutsideDhaka || 100);
+      setDeliveryCharge(charge);
       setFormData(prev => ({ ...prev, upazila: '' }));
     } else {
       setUpazilaList([]);
       setDeliveryCharge(0);
     }
-  }, [formData.district]);
+  }, [formData.district, settings.deliveryChargeInsideDhaka, settings.deliveryChargeOutsideDhaka]);
 
   const cartTotalAmount = cartTotal;
   const discount = appliedCoupon 
@@ -83,22 +85,39 @@ const CheckoutPage = () => {
   const subtotalAfterDiscount = Math.max(0, cartTotalAmount - discount);
   const total = subtotalAfterDiscount + deliveryCharge;
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     setCouponError('');
-    const coupon = settings.coupons?.find(c => c.code.toUpperCase() === couponCode.toUpperCase() && c.isActive);
+    setLoading(true);
     
-    if (!coupon) {
-      setCouponError('Invalid or inactive coupon code.');
-      return;
-    }
+    try {
+      const q = query(
+        collection(db, 'coupons'),
+        where('code', '==', couponCode.toUpperCase()),
+        where('isActive', '==', true)
+      );
+      
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
+        setCouponError('Invalid or inactive coupon code.');
+        return;
+      }
 
-    if (coupon.minSpend && cartTotalAmount < coupon.minSpend) {
-      setCouponError(`Min spend for this coupon is ৳${coupon.minSpend}`);
-      return;
-    }
+      const coupon = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any;
 
-    setAppliedCoupon(coupon);
-    setCouponCode('');
+      if (coupon.minSpend && cartTotalAmount < coupon.minSpend) {
+        setCouponError(`Min spend for this coupon is ৳${coupon.minSpend}`);
+        return;
+      }
+
+      setAppliedCoupon(coupon);
+      setCouponCode('');
+    } catch (err) {
+      console.error(err);
+      setCouponError('Failed to apply coupon. Try again.');
+    } finally {
+      setLoading(false);
+    }
   };
   const isFormValid = formData.name && formData.phone && formData.district && formData.upazila && formData.street && formData.transactionId;
 
@@ -222,64 +241,75 @@ const CheckoutPage = () => {
                 <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Shipping Information</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Recipient Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
-                    placeholder="Enter full name"
-                  />
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Recipient Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
+                      placeholder="Enter full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Phone Number</label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
+                      placeholder="e.g. 01700000000"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Phone Number</label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
-                    placeholder="e.g. 01700000000"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">District</label>
-                  <select
-                    required
-                    value={formData.district}
-                    onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium appearance-none"
-                  >
-                    <option value="">Select District</option>
-                    {districts.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Upazila / Area</label>
-                  <select
-                    required
-                    disabled={!formData.district}
-                    value={formData.upazila}
-                    onChange={(e) => setFormData({ ...formData, upazila: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium appearance-none disabled:opacity-50"
-                  >
-                    <option value="">Select Upazila</option>
-                    {upazilaList.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Street Address / House No.</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.street}
-                    onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
-                    placeholder="House, Road, Area details"
-                  />
+
+                <div className="pt-6 border-t border-gray-50">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 mb-6 flex items-center">
+                    <MapPin className="w-4 h-4 mr-2 text-orange-600" />
+                    Delivery Destination
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">District</label>
+                      <select
+                        required
+                        value={formData.district}
+                        onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium appearance-none"
+                      >
+                        <option value="">Select District</option>
+                        {districts.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Upazila / Area</label>
+                      <select
+                        required
+                        disabled={!formData.district}
+                        value={formData.upazila}
+                        onChange={(e) => setFormData({ ...formData, upazila: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium appearance-none disabled:opacity-50"
+                      >
+                        <option value="">Select Upazila</option>
+                        {upazilaList.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Street Address / House No.</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.street}
+                        onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 transition-all font-medium"
+                        placeholder="House, Road, Area details"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>

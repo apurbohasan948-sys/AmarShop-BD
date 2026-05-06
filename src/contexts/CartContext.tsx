@@ -8,6 +8,8 @@ interface CartContextType {
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
   cartTotal: number;
+  appliedCoupon: any | null;
+  setAppliedCoupon: (coupon: any | null) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -18,9 +20,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [appliedCoupon, setAppliedCoupon] = useState<any | null>(() => {
+    const saved = localStorage.getItem('coupon');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('coupon', JSON.stringify(appliedCoupon));
+  }, [appliedCoupon]);
 
   const addToCart = (product: Product, quantity: number = 1, variant?: ProductVariant) => {
     setCart(prev => {
@@ -62,13 +73,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       )
     );
   };
-
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    setAppliedCoupon(null);
+  };
 
   const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, appliedCoupon, setAppliedCoupon }}>
       {children}
     </CartContext.Provider>
   );
