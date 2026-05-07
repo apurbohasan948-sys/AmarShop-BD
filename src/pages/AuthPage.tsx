@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   updateProfile 
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { Store, Chrome, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
+import { Store, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const AuthPage = () => {
@@ -22,27 +20,6 @@ const AuthPage = () => {
     email: '',
     password: '',
   });
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      navigate('/');
-    } catch (err: any) {
-      console.error('Google Auth Error:', err);
-      let message = 'Failed to sign in. Please try again.';
-      if (err.code === 'auth/popup-blocked') {
-        message = 'Login popup was blocked. Please allow popups for this site.';
-      } else if (err.code === 'auth/operation-not-allowed') {
-        message = 'Google Login is not enabled in Firebase Console.';
-      }
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +67,7 @@ const AuthPage = () => {
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h2>
           <p className="text-gray-400 font-medium italic text-center mt-2 max-w-[240px]">
-            {isLogin ? 'Sign in to continue your shopping journey.' : 'Join the community for exclusive perks.'}
+            {isLogin ? 'Sign in to access your secure profile.' : 'Join the community for exclusive perks.'}
           </p>
         </div>
 
@@ -105,7 +82,7 @@ const AuthPage = () => {
         )}
 
         {/* Email Form */}
-        <form onSubmit={handleEmailAuth} className="space-y-4 mb-8">
+        <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
           <AnimatePresence mode="popLayout">
             {!isLogin && (
               <motion.div
@@ -132,7 +109,7 @@ const AuthPage = () => {
             <input
               type="email"
               required
-              placeholder="Email Address"
+              placeholder="Email (Gmail/Outlook)"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-600/20 font-medium transition-all"
@@ -161,24 +138,6 @@ const AuthPage = () => {
           </button>
         </form>
 
-        <div className="relative mb-8">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
-          <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest text-gray-400">
-            <span className="bg-white px-4">OR CONTINUE WITH</span>
-          </div>
-        </div>
-
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full flex items-center justify-center space-x-3 bg-white border-2 border-gray-100 py-4 rounded-2xl hover:border-gray-900 transition-all active:scale-95 group mb-6"
-        >
-          <div className="p-1.5 bg-gray-50 rounded-lg group-hover:bg-gray-900 transition-all">
-            <Chrome className="w-5 h-5 text-gray-600 group-hover:text-white" />
-          </div>
-          <span className="font-black text-gray-900 tracking-tight">Google</span>
-        </button>
-
         <div className="text-center">
           <button 
             type="button" 
@@ -189,8 +148,8 @@ const AuthPage = () => {
           </button>
         </div>
         
-        <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest text-center mt-8">
-          Secured by Firebase Authentication
+        <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest text-center mt-12">
+          Secure Authentication Layer
         </p>
       </motion.div>
     </div>
